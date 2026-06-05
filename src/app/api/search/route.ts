@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { createAdminClient } from '@/lib/supabase/server'
+import { createAdminClient, createClient } from '@/lib/supabase/server'
 import crypto from 'crypto'
 
 const RENTCAST_BASE = 'https://api.rentcast.io/v1'
@@ -162,6 +162,8 @@ function proxyRank(listings: Listing[]): Listing[] {
 
 export async function POST(request: NextRequest) {
   const supabase = createAdminClient()
+  const authClient = await createClient()
+  const { data: { user } } = await authClient.auth.getUser()
 
   let params: SearchParams
   try {
@@ -301,6 +303,16 @@ export async function POST(request: NextRequest) {
 
   // Sort by estimatedEquity descending
   results.sort((a, b) => b.estimatedEquity - a.estimatedEquity)
+
+  // Save last search for this user
+  if (user && results.length > 0) {
+    await supabase.from('last_search').upsert({
+      user_id: user.id,
+      search_params: params,
+      results,
+      searched_at: new Date().toISOString(),
+    }, { onConflict: 'user_id' })
+  }
 
   // Return remaining count after this operation
   const updatedCount = await getRequestCount(supabase)

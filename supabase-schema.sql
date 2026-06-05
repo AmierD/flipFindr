@@ -44,3 +44,29 @@ ALTER TABLE listings_cache ENABLE ROW LEVEL SECURITY;
 ALTER TABLE avm_cache ENABLE ROW LEVEL SECURITY;
 
 -- No public access policies: only the service role (server-side) can read/write.
+
+-- 5. Last search (one row per user, upserted after every search)
+CREATE TABLE IF NOT EXISTS last_search (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  search_params jsonb NOT NULL,
+  results      jsonb NOT NULL,
+  searched_at  timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id)
+);
+
+ALTER TABLE last_search ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.last_search TO service_role;
+
+-- 6. Favorites (one row per user+address)
+CREATE TABLE IF NOT EXISTS favorites (
+  id           uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      uuid NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  address      text NOT NULL,
+  data         jsonb NOT NULL,
+  favorited_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id, address)
+);
+
+ALTER TABLE favorites ENABLE ROW LEVEL SECURITY;
+GRANT ALL ON public.favorites TO service_role;

@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -33,28 +33,30 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-sm space-y-6">
-        <div>
+      <div className="flex w-full max-w-sm flex-col gap-6">
+        <div className="flex flex-col gap-1">
           <h1 className="text-2xl font-bold">Flip Finder</h1>
-          <p className="text-muted-foreground text-sm mt-1">Sign in to continue</p>
+          <p className="text-sm text-muted-foreground">Sign in to continue</p>
         </div>
 
         {sent ? (
           <p className="text-sm">Check your email for a magic link to sign in.</p>
         ) : (
-          <form onSubmit={handleLogin} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="you@example.com"
-                required
-              />
-            </div>
-            {error && <p className="text-destructive text-sm">{error}</p>}
+          <form onSubmit={handleLogin} className="flex flex-col gap-4">
+            <FieldGroup>
+              <Field>
+                <FieldLabel htmlFor="email">Email</FieldLabel>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@example.com"
+                  required
+                />
+              </Field>
+            </FieldGroup>
+            {error && <p className="text-sm text-destructive">{error}</p>}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? 'Sending…' : 'Send magic link'}
             </Button>

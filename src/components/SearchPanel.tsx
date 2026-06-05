@@ -1,12 +1,21 @@
 'use client'
 
 import { useState } from 'react'
+import { HeartIcon, SearchIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import {
+  Card,
+  CardAction,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
+import { Field, FieldGroup, FieldLabel } from '@/components/ui/field'
 
 interface ResultCard {
   address: string
@@ -30,46 +39,76 @@ function formatDollars(n: number): string {
 }
 
 function ResultCardView({ result }: { result: ResultCard }) {
+  const [favorited, setFavorited] = useState(false)
+  const [toggling, setToggling] = useState(false)
+
+  async function toggleFavorite() {
+    setToggling(true)
+    try {
+      const res = await fetch('/api/favorites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ address: result.address, data: result }),
+      })
+      const json = await res.json()
+      if (res.ok) setFavorited(json.favorited)
+    } finally {
+      setToggling(false)
+    }
+  }
+
   return (
-    <Card className={result.meetsEquityTarget ? '' : 'opacity-70'}>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base font-semibold leading-snug">
-          {result.address}
-        </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          {result.bedrooms} bed &nbsp;·&nbsp; {result.bathrooms} bath &nbsp;·&nbsp;{' '}
+    <Card>
+      <CardHeader>
+        <CardTitle>{result.address}</CardTitle>
+        <CardDescription>
+          {result.bedrooms} bed · {result.bathrooms} bath ·{' '}
           {result.squareFootage.toLocaleString()} sqft
-        </p>
-      </CardHeader>
-      <CardContent className="space-y-1 text-sm">
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">List Price</span>
-          <span>{formatDollars(result.listPrice)}</span>
-        </div>
-        <div className="flex justify-between">
-          <span className="text-muted-foreground">Est. Market Value</span>
-          <span>{formatDollars(result.estimatedMarketValue)}</span>
-        </div>
-        <div className="flex justify-between font-medium">
-          <span>Est. Equity</span>
-          <span className={result.meetsEquityTarget ? 'text-green-600' : ''}>
-            {formatDollars(result.estimatedEquity)}
-          </span>
-        </div>
-        <div className="flex justify-between text-muted-foreground pt-1 border-t mt-2">
-          <span>Nearby range</span>
-          <span>
-            {result.minNearbyPrice !== null && result.maxNearbyPrice !== null
-              ? `${formatDollars(result.minNearbyPrice)} – ${formatDollars(result.maxNearbyPrice)}`
-              : 'No nearby comps found'}
-          </span>
-        </div>
+        </CardDescription>
         {!result.meetsEquityTarget && (
-          <div className="pt-1">
+          <CardAction>
             <Badge variant="secondary">Below $50k target</Badge>
-          </div>
+          </CardAction>
         )}
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col gap-1">
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">List Price</span>
+            <span>{formatDollars(result.listPrice)}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">Est. Market Value</span>
+            <span>{formatDollars(result.estimatedMarketValue)}</span>
+          </div>
+          <div className="flex justify-between text-sm font-medium">
+            <span>Est. Equity</span>
+            <span>{formatDollars(result.estimatedEquity)}</span>
+          </div>
+          <div className="flex justify-between text-sm text-muted-foreground mt-2 border-t pt-2">
+            <span>Nearby range</span>
+            <span>
+              {result.minNearbyPrice !== null && result.maxNearbyPrice !== null
+                ? `${formatDollars(result.minNearbyPrice)} – ${formatDollars(result.maxNearbyPrice)}`
+                : 'No nearby comps found'}
+            </span>
+          </div>
+        </div>
       </CardContent>
+      <CardFooter className="justify-end">
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={toggleFavorite}
+          disabled={toggling}
+        >
+          <HeartIcon
+            data-icon="inline-start"
+            className={favorited ? 'fill-current text-destructive' : ''}
+          />
+          {favorited ? 'Saved' : 'Save'}
+        </Button>
+      </CardFooter>
     </Card>
   )
 }
@@ -109,7 +148,6 @@ export default function SearchPanel({ initialRemaining }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
-
       const data = await res.json()
 
       if (!res.ok) {
@@ -128,96 +166,95 @@ export default function SearchPanel({ initialRemaining }: Props) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       <h1 className="text-2xl font-bold">Flip Finder</h1>
 
-      <form onSubmit={handleSearch} className="space-y-5">
-        {/* Search area */}
-        <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Search Area</p>
-          <RadioGroup value={mode} onValueChange={(v) => setMode(v as 'city' | 'radius')} className="flex gap-4">
-            <div className="flex items-center gap-2">
-              <RadioGroupItem value="city" id="mode-city" />
-              <Label htmlFor="mode-city">City</Label>
-            </div>
-            <div className="flex items-center gap-2">
-              <RadioGroupItem value="radius" id="mode-radius" />
-              <Label htmlFor="mode-radius">Radius</Label>
-            </div>
-          </RadioGroup>
+      <form onSubmit={handleSearch} className="flex flex-col gap-5">
+        <FieldGroup>
+          <Field>
+            <FieldLabel>Search Area</FieldLabel>
+            <ToggleGroup
+              value={[mode]}
+              onValueChange={(val) => val.length && setMode(val[val.length - 1] as 'city' | 'radius')}
+              variant="outline"
+              spacing={0}
+            >
+              <ToggleGroupItem value="city">City</ToggleGroupItem>
+              <ToggleGroupItem value="radius">Radius</ToggleGroupItem>
+            </ToggleGroup>
+          </Field>
 
           {mode === 'city' ? (
             <div className="flex gap-2">
-              <div className="flex-1 space-y-1">
-                <Label htmlFor="city">City</Label>
+              <Field className="flex-1">
+                <FieldLabel htmlFor="city">City</FieldLabel>
                 <Input id="city" placeholder="Memphis" value={city} onChange={(e) => setCity(e.target.value)} required />
-              </div>
-              <div className="w-24 space-y-1">
-                <Label htmlFor="state">State</Label>
+              </Field>
+              <Field className="w-24">
+                <FieldLabel htmlFor="state">State</FieldLabel>
                 <Input id="state" placeholder="TN" value={state} onChange={(e) => setState(e.target.value)} maxLength={2} required />
-              </div>
+              </Field>
             </div>
           ) : (
             <div className="flex gap-2">
-              <div className="flex-1 space-y-1">
-                <Label htmlFor="address">Address</Label>
+              <Field className="flex-1">
+                <FieldLabel htmlFor="address">Address</FieldLabel>
                 <Input id="address" placeholder="123 Main St, Memphis TN" value={address} onChange={(e) => setAddress(e.target.value)} required />
-              </div>
-              <div className="w-24 space-y-1">
-                <Label htmlFor="miles">Miles</Label>
+              </Field>
+              <Field className="w-24">
+                <FieldLabel htmlFor="miles">Miles</FieldLabel>
                 <Input id="miles" type="number" placeholder="10" value={miles} onChange={(e) => setMiles(e.target.value)} min={1} max={100} required />
-              </div>
+              </Field>
             </div>
           )}
-        </div>
+        </FieldGroup>
 
-        {/* Filters */}
-        <div className="space-y-3">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Filters</p>
+        <FieldGroup>
           <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="maxPrice">Max Price</Label>
+            <Field>
+              <FieldLabel htmlFor="maxPrice">Max Price</FieldLabel>
               <Input id="maxPrice" type="number" placeholder="300000" value={maxPrice} onChange={(e) => setMaxPrice(e.target.value)} min={1} required />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="minBeds">Min Beds</Label>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="minBeds">Min Beds</FieldLabel>
               <Input id="minBeds" type="number" placeholder="3" value={minBeds} onChange={(e) => setMinBeds(e.target.value)} min={1} required />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="minBaths">Min Baths</Label>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="minBaths">Min Baths</FieldLabel>
               <Input id="minBaths" type="number" placeholder="2" value={minBaths} onChange={(e) => setMinBaths(e.target.value)} min={1} required />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="minSqft">Min Sqft</Label>
+            </Field>
+            <Field>
+              <FieldLabel htmlFor="minSqft">Min Sqft</FieldLabel>
               <Input id="minSqft" type="number" placeholder="1200" value={minSqft} onChange={(e) => setMinSqft(e.target.value)} min={1} required />
-            </div>
+            </Field>
           </div>
-        </div>
+        </FieldGroup>
 
         <div className="flex items-center justify-between">
           <p className="text-sm text-muted-foreground">
-            Requests remaining: <span className="font-medium text-foreground">{remaining} / 50</span>
+            Searches remaining:{' '}
+            <span className="font-medium text-foreground">{remaining} / 50</span>
           </p>
           <Button type="submit" disabled={loading}>
+            <SearchIcon data-icon="inline-start" />
             {loading ? 'Searching…' : 'Run Search'}
           </Button>
         </div>
       </form>
 
-      {/* Error state */}
       {errorMessage && (
         <p className="text-sm text-destructive">{errorMessage}</p>
       )}
 
-      {/* Empty state */}
       {emptyMessage && (
         <p className="text-sm text-muted-foreground">{emptyMessage}</p>
       )}
 
-      {/* Results */}
       {results && results.length > 0 && (
-        <div className="space-y-4">
-          <p className="text-sm text-muted-foreground">{results.length} result{results.length !== 1 ? 's' : ''}, sorted by estimated equity</p>
+        <div className="flex flex-col gap-4">
+          <p className="text-sm text-muted-foreground">
+            {results.length} result{results.length !== 1 ? 's' : ''}, sorted by estimated equity
+          </p>
           {results.map((r, i) => (
             <ResultCardView key={i} result={r} />
           ))}
